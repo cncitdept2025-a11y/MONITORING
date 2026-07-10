@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Network Monitor</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0A0E14;
+    --surface: #121826;
+    --surface-2: #1A2333;
+    --border: #232D40;
+    --text-primary: #E5E9F0;
+    --text-secondary: #8B95A7;
+    --text-muted: #4E5A70;
+    --green: #34D399;
+    --green-dim: #12362B;
+    --red: #F43F5E;
+    --red-dim: #3D1420;
+    --amber: #FBBF24;
+    --amber-dim: #3D2E0A;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text-primary);
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+    padding: 32px 20px 60px;
+  }
+  .wrap { max-width: 760px; margin: 0 auto; }
+
+  .eyebrow-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 28px;
+  }
+  .eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.14em;
+    color: var(--text-muted);
+    text-transform: uppercase;
+  }
+  #clock {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--text-secondary);
+  }
+
+  .status-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 24px 24px 0;
+    margin-bottom: 16px;
+    overflow: hidden;
+  }
+  .status-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 4px;
+  }
+  #status-word {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 30px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    transition: color 0.3s ease;
+  }
+  .status-word-online { color: var(--green); }
+  .status-word-offline { color: var(--red); }
+  .status-word-checking { color: var(--amber); }
+
+  #status-sub {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-top: 4px;
+  }
+
+  canvas#ecg {
+    display: block;
+    width: 100%;
+    height: 120px;
+    margin-top: 12px;
+  }
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+  }
+  .stat-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .stat-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 19px;
+    font-weight: 500;
+  }
+
+  .controls {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 18px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+  }
+  .controls label {
+    font-size: 12px;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  select {
+    background: var(--surface-2);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 5px 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+  }
+  button {
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    border-radius: 8px;
+    padding: 9px 16px;
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: background 0.15s ease;
+  }
+  button:hover { background: #212C40; }
+  button.primary {
+    background: var(--green);
+    border-color: var(--green);
+    color: #06231A;
+  }
+  button.primary:hover { background: #2BC28C; }
+  button.danger {
+    background: var(--red);
+    border-color: var(--red);
+    color: #3D0A15;
+  }
+  button.muted-active {
+    background: var(--amber-dim);
+    border-color: var(--amber);
+    color: var(--amber);
+  }
+
+  .log-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+  }
+  .log-title {
+    font-size: 11px;
+    color: var(--text-muted);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  #log {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    line-height: 1.7;
+    max-height: 220px;
+    overflow-y: auto;
+  }
+  #log div { white-space: pre-wrap; word-break: break-word; }
+  .log-online { color: var(--green); }
+  .log-offline { color: var(--red); }
+  .log-neutral { color: var(--text-secondary); }
+
+  @media (max-width: 560px) {
+    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    #status-word { font-size: 24px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="eyebrow-row">
+    <div class="eyebrow">Network monitor</div>
+    <div id="clock">--:--:--</div>
+  </div>
+
+  <div class="status-panel">
+    <div class="status-header">
+      <div>
+        <div id="status-word" class="status-word-checking">CHECKING</div>
+        <div id="status-sub">Starting up…</div>
+      </div>
+    </div>
+    <canvas id="ecg"></canvas>
+  </div>
+
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-label">Uptime</div>
+      <div class="stat-value" id="stat-uptime">100%</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Current status for</div>
+      <div class="stat-value" id="stat-duration">0s</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Last outage</div>
+      <div class="stat-value" id="stat-lastoutage">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Outages today</div>
+      <div class="stat-value" id="stat-outagecount">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Download</div>
+      <div class="stat-value" id="stat-download">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Upload</div>
+      <div class="stat-value" id="stat-upload">—</div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <label>Check every
+      <select id="interval-select">
+        <option value="3000">3s</option>
+        <option value="5000" selected>5s</option>
+        <option value="10000">10s</option>
+        <option value="30000">30s</option>
+      </select>
+    </label>
+    <label>Alarm after
+      <select id="threshold-select">
+        <option value="1">1 fail</option>
+        <option value="2" selected>2 fails</option>
+        <option value="3">3 fails</option>
+      </select>
+    </label>
+    <button id="toggle-btn" class="primary">Pause monitoring</button>
+    <button id="mute-btn">Mute alarm</button>
+    <button id="notif-btn">Enable notifications</button>
+    <button id="speedtest-btn">Test speed now</button>
+    <button id="autospeed-btn">Auto speed test: off</button>
+  </div>
+  <div id="speed-status" style="font-size: 12px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; margin: -8px 0 16px;"></div>
+
+  <div class="log-panel">
+    <div class="log-title">Event log</div>
+    <div id="log"></div>
+  </div>
+
+</div>
+
+<script>
+(function() {
+  const ENDPOINTS = [
+    'https://www.gstatic.com/generate_204',
+    'https://www.cloudflare.com/cdn-cgi/trace',
+    'https://www.google.com/favicon.ico'
+  ];
+
+  const statusWord = document.getElementById('status-word');
+  const statusSub = document.getElementById('status-sub');
+  const clockEl = document.getElementById('clock');
+  const logEl = document.getElementById('log');
+  const statUptime = document.getElementById('stat-uptime');
+  const statDuration = document.getElementById('stat-duration');
+  const statLastOutage = document.getElementById('stat-lastoutage');
+  const statOutageCount = document.getElementById('stat-outagecount');
+  const intervalSelect = document.getElementById('interval-select');
+  const thresholdSelect = document.getElementById('threshold-select');
+  const toggleBtn = document.getElementById('toggle-btn');
+  const muteBtn = document.getElementById('mute-btn');
+  const notifBtn = document.getElementById('notif-btn');
+  const speedtestBtn = document.getElementById('speedtest-btn');
+  const autospeedBtn = document.getElementById('autospeed-btn');
+  const speedStatusEl = document.getElementById('speed-status');
+  const statDownload = document.getElementById('stat-download');
+  const statUpload = document.getElementById('stat-upload');
+  const canvas = document.getElementById('ecg');
+  const ctx = canvas.getContext('2d');
+
+  let running = true;
+  let muted = false;
+  let online = null;
+  let consecutiveFailures = 0;
+  let checkTimer = null;
+  let alarmInterval = null;
+  let statusSince = Date.now();
+  let outageCount = 0;
+  let lastOutageDuration = null;
+  let totalUpMs = 0;
+  let totalDownMs = 0;
+  let lastTickTime = Date.now();
+  let audioCtx = null;
+  let speedTesting = false;
+  let autoSpeedTest = false;
+  let autoSpeedTimer = null;
+
+  function resizeCanvas() {
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * devicePixelRatio;
+    canvas.height = rect.height * devicePixelRatio;
+    ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+  }
+  window.addEventListener('resize', resizeCanvas);
+  setTimeout(resizeCanvas, 50);
+
+  let wavePhase = 0;
+  function drawWave() {
+    const w = canvas.getBoundingClientRect().width;
+    const h = canvas.getBoundingClientRect().height;
+    ctx.clearRect(0, 0, w, h);
+    const midY = h / 2;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+
+    if (online === true) {
+      ctx.strokeStyle = '#34D399';
+      for (let x = 0; x <= w; x++) {
+        const t = (x + wavePhase) * 0.04;
+        const beat = ((Math.floor(t) % 6) === 0)
+          ? Math.sin((t % 1) * Math.PI) * -28
+          : Math.sin(t) * 3;
+        const y = midY + beat;
+        x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      }
+      wavePhase += 2.2;
+    } else if (online === false) {
+      ctx.strokeStyle = '#F43F5E';
+      for (let x = 0; x <= w; x++) {
+        const glitch = Math.random() < 0.02 ? (Math.random() - 0.5) * 40 : 0;
+        const y = midY + glitch;
+        x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      }
+    } else {
+      ctx.strokeStyle = '#FBBF24';
+      for (let x = 0; x <= w; x++) {
+        const y = midY + Math.sin((x + wavePhase) * 0.03) * 4;
+        x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      }
+      wavePhase += 0.8;
+    }
+    ctx.stroke();
+    requestAnimationFrame(drawWave);
+  }
+  requestAnimationFrame(drawWave);
+
+  function fmtDuration(ms) {
+    const s = Math.floor(ms / 1000);
+    if (s < 60) return s + 's';
+    const m = Math.floor(s / 60);
+    const rs = s % 60;
+    if (m < 60) return m + 'm ' + rs + 's';
+    const hh = Math.floor(m / 60);
+    const rm = m % 60;
+    return hh + 'h ' + rm + 'm';
+  }
+
+  function fmtClock() {
+    const d = new Date();
+    clockEl.textContent = d.toLocaleTimeString();
+  }
+  setInterval(fmtClock, 1000);
+  fmtClock();
+
+  function log(message, cls) {
+    const line = document.createElement('div');
+    line.className = cls || 'log-neutral';
+    const time = new Date().toLocaleTimeString();
+    line.textContent = '[' + time + ']  ' + message;
+    logEl.prepend(line);
+    while (logEl.children.length > 80) logEl.removeChild(logEl.lastChild);
+  }
+
+  function beep(freq, duration, gainLevel, waveType) {
+    if (muted) return;
+    try {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      const compressor = audioCtx.createDynamicsCompressor();
+      osc.type = waveType || 'square';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(gainLevel != null ? gainLevel : 0.15, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration / 1000);
+      osc.connect(gain);
+      gain.connect(compressor);
+      compressor.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + duration / 1000);
+    } catch (e) {}
+  }
+
+  // A loud two-tone wail (like a classic emergency siren) rather than a
+  // single soft beep, so it's much harder to miss.
+  function sirenPulse() {
+    if (muted) return;
+    try {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const now = audioCtx.currentTime;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      const compressor = audioCtx.createDynamicsCompressor();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(600, now);
+      osc.frequency.linearRampToValueAtTime(1200, now + 0.35);
+      osc.frequency.linearRampToValueAtTime(600, now + 0.7);
+      osc.frequency.linearRampToValueAtTime(1200, now + 1.05);
+      osc.frequency.linearRampToValueAtTime(600, now + 1.4);
+      gain.gain.setValueAtTime(0.55, now);
+      gain.gain.setValueAtTime(0.55, now + 1.35);
+      gain.gain.linearRampToValueAtTime(0, now + 1.4);
+      osc.connect(gain);
+      gain.connect(compressor);
+      compressor.connect(audioCtx.destination);
+      osc.start(now);
+      osc.stop(now + 1.4);
+    } catch (e) {}
+  }
+
+  function startAlarm() {
+    if (alarmInterval) return;
+    sirenPulse();
+    alarmInterval = setInterval(sirenPulse, 1500);
+  }
+
+  function stopAlarm() {
+    if (alarmInterval) {
+      clearInterval(alarmInterval);
+      alarmInterval = null;
+    }
+  }
+
+  function setStatus(newStatus) {
+    if (online === newStatus) return;
+    const now = Date.now();
+    const elapsed = now - statusSince;
+    if (online === true) totalUpMs += elapsed;
+    if (online === false) totalDownMs += elapsed;
+
+    if (newStatus === false) {
+      outageCount++;
+      statOutageCount.textContent = outageCount;
+      log('Connection lost', 'log-offline');
+      startAlarm();
+      notify('Internet connection lost', 'No connectivity detected. Alarm is sounding.');
+    } else if (newStatus === true) {
+      if (online === false) {
+        lastOutageDuration = elapsed;
+        statLastOutage.textContent = fmtDuration(elapsed);
+        log('Connection restored after ' + fmtDuration(elapsed), 'log-online');
+        beep(1000, 140, 0.35, 'sine');
+        setTimeout(() => beep(1400, 200, 0.35, 'sine'), 150);
+        notify('Internet connection restored', 'Back online after ' + fmtDuration(elapsed) + '.');
+      } else {
+        log('Monitoring online', 'log-online');
+      }
+      stopAlarm();
+    }
+
+    online = newStatus;
+    statusSince = now;
+
+    if (online === true) {
+      statusWord.textContent = 'ONLINE';
+      statusWord.className = 'status-word-online';
+      statusSub.textContent = 'Connection is healthy';
+    } else {
+      statusWord.textContent = 'OFFLINE';
+      statusWord.className = 'status-word-offline';
+      statusSub.textContent = 'No internet connection detected';
+    }
+  }
+
+  function setChecking() {
+    if (online !== null) return;
+    statusWord.textContent = 'CHECKING';
+    statusWord.className = 'status-word-checking';
+    statusSub.textContent = 'Running first check…';
+  }
+
+  // The connectivity loop lives inside a Web Worker. Browsers heavily
+  // throttle setTimeout/setInterval on the main thread once a tab is
+  // backgrounded or minimized (often down to once a minute), but dedicated
+  // workers are not subject to that same throttling, so checks keep firing
+  // on schedule even while you're on another tab or the window is minimized.
+  const workerSource = `
+    let endpoints = ${JSON.stringify(ENDPOINTS)};
+    let intervalMs = 5000;
+    let timer = null;
+
+    async function checkOnce(url) {
+      const controller = new AbortController();
+      const t = setTimeout(() => controller.abort(), 4000);
+      try {
+        await fetch(url, { mode: 'no-cors', cache: 'no-store', signal: controller.signal });
+        clearTimeout(t);
+        return true;
+      } catch (e) {
+        clearTimeout(t);
+        return false;
+      }
+    }
+
+    async function runCheck() {
+      const results = await Promise.all(endpoints.map(checkOnce));
+      const ok = results.some(r => r === true);
+      postMessage({ type: 'result', ok: ok, ts: Date.now() });
+    }
+
+    function scheduleNext() {
+      clearTimeout(timer);
+      timer = setTimeout(async () => {
+        await runCheck();
+        scheduleNext();
+      }, intervalMs);
+    }
+
+    self.onmessage = function(e) {
+      const msg = e.data;
+      if (msg.type === 'start') {
+        intervalMs = msg.intervalMs;
+        runCheck();
+        scheduleNext();
+      } else if (msg.type === 'stop') {
+        clearTimeout(timer);
+        timer = null;
+      } else if (msg.type === 'setInterval') {
+        intervalMs = msg.intervalMs;
+      }
+    };
+  `;
+
+  const workerBlob = new Blob([workerSource], { type: 'application/javascript' });
+  const worker = new Worker(URL.createObjectURL(workerBlob));
+
+  worker.onmessage = function(e) {
+    const msg = e.data;
+    if (msg.type !== 'result') return;
+    const threshold = parseInt(thresholdSelect.value, 10);
+    if (msg.ok) {
+      consecutiveFailures = 0;
+      setStatus(true);
+    } else {
+      consecutiveFailures++;
+      if (consecutiveFailures >= threshold) {
+        setStatus(false);
+      } else {
+        log('Check failed (' + consecutiveFailures + '/' + threshold + ')', 'log-neutral');
+      }
+    }
+  };
+
+  function tick() {
+    const now = Date.now();
+    const elapsed = now - statusSince;
+    statDuration.textContent = fmtDuration(elapsed);
+
+    let upMs = totalUpMs, downMs = totalDownMs;
+    if (online === true) upMs += elapsed;
+    if (online === false) downMs += elapsed;
+    const total = upMs + downMs;
+    statUptime.textContent = total > 0 ? ((upMs / total) * 100).toFixed(1) + '%' : '100%';
+  }
+  setInterval(tick, 1000);
+
+  // Desktop notifications so an alarm is visible even if this tab isn't
+  // the one currently in focus.
+  let notifPermission = (typeof Notification !== 'undefined') ? Notification.permission : 'unsupported';
+
+  function updateNotifBtn() {
+    if (notifPermission === 'granted') {
+      notifBtn.textContent = 'Notifications on';
+      notifBtn.className = 'muted-active';
+    } else if (notifPermission === 'unsupported') {
+      notifBtn.style.display = 'none';
+    } else {
+      notifBtn.textContent = 'Enable notifications';
+      notifBtn.className = '';
+    }
+  }
+  updateNotifBtn();
+
+  notifBtn.addEventListener('click', async () => {
+    if (notifPermission === 'granted') return;
+    notifPermission = await Notification.requestPermission();
+    updateNotifBtn();
+    log(notifPermission === 'granted' ? 'Desktop notifications enabled' : 'Notifications not granted', 'log-neutral');
+  });
+
+  function notify(title, body) {
+    if (notifPermission === 'granted') {
+      try { new Notification(title, { body: body, silent: false }); } catch (e) {}
+    }
+  }
+
+  // Flash the tab title when offline and the tab isn't focused, so a
+  // minimized/background window still catches your eye.
+  const baseTitle = document.title;
+  let titleFlashOn = false;
+  setInterval(() => {
+    if (online === false && document.hidden) {
+      titleFlashOn = !titleFlashOn;
+      document.title = titleFlashOn ? '⚠ OFFLINE — ' + baseTitle : baseTitle;
+    } else {
+      document.title = baseTitle;
+    }
+  }, 1000);
+
+  toggleBtn.addEventListener('click', () => {
+    running = !running;
+    if (running) {
+      toggleBtn.textContent = 'Pause monitoring';
+      toggleBtn.className = 'primary';
+      log('Monitoring resumed', 'log-neutral');
+      worker.postMessage({ type: 'start', intervalMs: parseInt(intervalSelect.value, 10) });
+    } else {
+      toggleBtn.textContent = 'Resume monitoring';
+      toggleBtn.className = 'danger';
+      worker.postMessage({ type: 'stop' });
+      stopAlarm();
+      log('Monitoring paused', 'log-neutral');
+    }
+  });
+
+  intervalSelect.addEventListener('change', () => {
+    worker.postMessage({ type: 'setInterval', intervalMs: parseInt(intervalSelect.value, 10) });
+  });
+
+  muteBtn.addEventListener('click', () => {
+    muted = !muted;
+    muteBtn.textContent = muted ? 'Unmute alarm' : 'Mute alarm';
+    muteBtn.className = muted ? 'muted-active' : '';
+    if (muted) stopAlarm();
+    else if (online === false) startAlarm();
+  });
+
+  log('Internet monitor initialized', 'log-neutral');
+  setChecking();
+  worker.postMessage({ type: 'start', intervalMs: parseInt(intervalSelect.value, 10) });
+
+  // Speed test — measures real download/upload throughput using
+  // Cloudflare's public speed-test endpoints. Download fetches a blob of
+  // known size and times it; upload POSTs a blob and times that. Both are
+  // reported in Mbps.
+  async function testDownloadSpeed() {
+    const bytes = 5000000;
+    const url = 'https://speed.cloudflare.com/__down?bytes=' + bytes + '&cachebust=' + Date.now();
+    const start = performance.now();
+    const resp = await fetch(url, { cache: 'no-store' });
+    const blob = await resp.blob();
+    const seconds = (performance.now() - start) / 1000;
+    return (blob.size * 8) / seconds / 1e6;
+  }
+
+  async function testUploadSpeed() {
+    const bytes = 2000000;
+    const data = new Uint8Array(bytes);
+    const start = performance.now();
+    await fetch('https://speed.cloudflare.com/__up', {
+      method: 'POST',
+      body: data,
+      cache: 'no-store'
+    });
+    const seconds = (performance.now() - start) / 1000;
+    return (bytes * 8) / seconds / 1e6;
+  }
+
+  async function runSpeedTest() {
+    if (speedTesting) return;
+    speedTesting = true;
+    speedtestBtn.disabled = true;
+    speedStatusEl.textContent = 'Testing speed…';
+    try {
+      const downMbps = await testDownloadSpeed();
+      statDownload.textContent = downMbps.toFixed(1) + ' Mbps';
+      speedStatusEl.textContent = 'Download done, testing upload…';
+      const upMbps = await testUploadSpeed();
+      statUpload.textContent = upMbps.toFixed(1) + ' Mbps';
+      log('Speed test: ' + downMbps.toFixed(1) + ' Mbps down / ' + upMbps.toFixed(1) + ' Mbps up', 'log-neutral');
+      speedStatusEl.textContent = 'Last tested ' + new Date().toLocaleTimeString();
+    } catch (e) {
+      speedStatusEl.textContent = 'Speed test failed — check your connection.';
+      log('Speed test failed', 'log-offline');
+    } finally {
+      speedTesting = false;
+      speedtestBtn.disabled = false;
+    }
+  }
+
+  speedtestBtn.addEventListener('click', runSpeedTest);
+
+  autospeedBtn.addEventListener('click', () => {
+    autoSpeedTest = !autoSpeedTest;
+    if (autoSpeedTest) {
+      autospeedBtn.textContent = 'Auto speed test: on (60s)';
+      autospeedBtn.className = 'muted-active';
+      autoSpeedTimer = setInterval(() => {
+        if (online) runSpeedTest();
+      }, 60000);
+    } else {
+      autospeedBtn.textContent = 'Auto speed test: off';
+      autospeedBtn.className = '';
+      clearInterval(autoSpeedTimer);
+      autoSpeedTimer = null;
+    }
+  });
+
+  // Browsers block audio until the page has seen a user gesture — unlock
+  // the AudioContext on first interaction so the alarm can play at full
+  // volume the moment it's needed.
+  function unlockAudio() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    document.removeEventListener('click', unlockAudio);
+  }
+  document.addEventListener('click', unlockAudio);
+})();
+</script>
+</body>
+</html>
